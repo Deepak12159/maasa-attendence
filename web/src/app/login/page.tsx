@@ -36,8 +36,8 @@ export default function LoginPage() {
 
       toast.success("Logged in successfully!");
       router.push("/");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to log in");
+    } catch (error: Error | unknown) {
+      toast.error((error as Error).message || "Failed to log in");
     } finally {
       setIsLoading(false);
     }
@@ -81,7 +81,7 @@ export default function LoginPage() {
           </Button>
 
           <p className="text-center text-sm text-slate-500 mt-4">
-            Don't have an account? <a href="/signup" className="text-indigo-600 hover:underline">Sign up</a>
+            Don&apos;t have an account? <a href="/signup" className="text-indigo-600 hover:underline">Sign up</a>
           </p>
         </form>
       </div>

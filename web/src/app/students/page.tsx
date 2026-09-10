@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Table,
-  Body,
   TableCell,
   TableHead,
   TableHeader,
@@ -58,8 +57,8 @@ export default function StudentsPage() {
       setName("");
       setRoll("");
       mutate();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to add student");
+    } catch (error: Error | unknown) {
+      toast.error((error as Error).message || "Failed to add student");
     } finally {
       setIsSubmitting(false);
     }
@@ -73,7 +72,7 @@ export default function StudentsPage() {
       if (error) throw error;
       toast.success("Student deleted");
       mutate();
-    } catch (error: any) {
+    } catch (error) {
       toast.error("Failed to delete student");
     }
   };

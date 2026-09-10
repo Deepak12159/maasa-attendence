@@ -3,7 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { format } from "date-fns";
-import { Plus, Trash2, Loader2, Save } from "lucide-react";
+import { Trash2, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -61,8 +61,8 @@ export default function SettingsPage() {
       setName("");
       setDate("");
       mutateHolidays();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to add holiday");
+    } catch (error: Error | unknown) {
+      toast.error((error as Error).message || "Failed to add holiday");
     } finally {
       setIsSubmittingHoliday(false);
     }
@@ -74,7 +74,7 @@ export default function SettingsPage() {
       if (error) throw error;
       toast.success("Holiday deleted");
       mutateHolidays();
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete holiday");
     }
   };
@@ -94,7 +94,7 @@ export default function SettingsPage() {
       if (error) throw error;
       toast.success("Working days updated");
       mutateSettings();
-    } catch (error) {
+    } catch {
       toast.error("Failed to update working days");
     } finally {
       setIsSavingDays(false);

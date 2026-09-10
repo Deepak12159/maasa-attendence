@@ -27,7 +27,7 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
       });
@@ -36,8 +36,8 @@ export default function SignupPage() {
 
       toast.success("Account created! You can now log in.");
       router.push("/login");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create account");
+    } catch (error: Error | unknown) {
+      toast.error((error as Error).message || "Failed to create account");
     } finally {
       setIsLoading(false);
     }

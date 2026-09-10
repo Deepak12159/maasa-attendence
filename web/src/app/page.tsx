@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { format, parseISO, isSameDay, getDay } from "date-fns";
+import { format, getDay } from "date-fns";
 import { CalendarIcon, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -53,7 +53,7 @@ export default function AttendancePage() {
       await toggleAttendance(studentId, dateStr, currentStatus);
       mutateAttendance();
       toast.success(currentStatus === 'present' ? "Marked Absent" : "Marked Present");
-    } catch (error) {
+    } catch {
       toast.error("Failed to update attendance");
       mutateAttendance();
     }
@@ -91,7 +91,6 @@ export default function AttendancePage() {
               mode="single"
               selected={date}
               onSelect={(d) => d && setDate(d)}
-              initialFocus
             />
           </PopoverContent>
         </Popover>
