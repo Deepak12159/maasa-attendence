@@ -16,11 +16,12 @@ import { toast } from "sonner";
 
 interface ExcelAttendanceDialogProps {
   students: Student[];
+  attendanceMap: Record<string, string>;
   dateStr: string;
   onSuccess?: () => void;
 }
 
-export function ExcelAttendanceDialog({ students, dateStr, onSuccess }: ExcelAttendanceDialogProps) {
+export function ExcelAttendanceDialog({ students, attendanceMap, dateStr, onSuccess }: ExcelAttendanceDialogProps) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -35,7 +36,7 @@ export function ExcelAttendanceDialog({ students, dateStr, onSuccess }: ExcelAtt
       toast.error("No students found in register to download");
       return;
     }
-    downloadAttendanceTemplate(students, dateStr);
+    downloadAttendanceTemplate(students, attendanceMap, dateStr);
     toast.success("Attendance template downloaded!");
   };
 

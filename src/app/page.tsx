@@ -376,6 +376,7 @@ export default function AttendancePage() {
                     mode="single"
                     selected={date}
                     onSelect={(d) => d && setDate(d)}
+                    fromDate={new Date(2026, 7, 15)}
                   />
                 </PopoverContent>
               </Popover>
@@ -408,6 +409,7 @@ export default function AttendancePage() {
                 <>
                   <ExcelAttendanceDialog
                     students={students}
+                    attendanceMap={attendanceMap}
                     dateStr={dateStr}
                     onSuccess={() => mutateAttendance()}
                   />

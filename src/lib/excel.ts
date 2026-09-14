@@ -137,17 +137,24 @@ export function exportAttendanceToExcel(
   XLSX.writeFile(wb, `Sports_Club_Attendance_${dateStr}.xlsx`);
 }
 
-export function downloadAttendanceTemplate(students: Student[], dateStr: string) {
-  const rows = students.map((st, index) => ({
-    'S.No': index + 1,
-    'Scholar No': st.scholar_number || '',
-    'Enrollment No': st.enrollment_number || st.roll_number || '',
-    'Student Name': st.name,
-    'Year': st.year || '',
-    'Program': st.program || '',
-    'Section': st.section || 'Section A',
-    'Attendance (P/A)': 'P', // Defaults to 'P' for convenience, Sir can change to 'A'
-  }));
+export function downloadAttendanceTemplate(
+  students: Student[],
+  attendanceMap: Record<string, string>,
+  dateStr: string
+) {
+  const rows = students.map((st, index) => {
+    const isPresent = attendanceMap[st.id] === 'present';
+    return {
+      'S.No': index + 1,
+      'Scholar No': st.scholar_number || '',
+      'Enrollment No': st.enrollment_number || st.roll_number || '',
+      'Student Name': st.name,
+      'Year': st.year || '',
+      'Program': st.program || '',
+      'Section': st.section || 'Section A',
+      'Attendance (P/A)': isPresent ? 'P' : 'A',
+    };
+  });
 
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
