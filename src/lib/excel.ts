@@ -65,11 +65,15 @@ export function parseExcelFile(fileData: ArrayBuffer): Partial<Student>[] {
     if (!name && !enrollment && !scholar) continue;
 
     const year = deriveYearFromEnrollment(enrollment);
+    
+    // Generate a temporary enrollment number if neither enrollment nor scholar is provided, 
+    // so the student can still be inserted without silently failing.
+    const finalEnrollment = enrollment || scholar || `TEMP-${Date.now().toString(36)}-${Math.floor(Math.random() * 10000)}`;
 
     parsedList.push({
-      name: name || 'Student',
-      enrollment_number: enrollment || scholar || '',
-      roll_number: scholar || enrollment || '',
+      name: name || 'Unknown Student',
+      enrollment_number: finalEnrollment,
+      roll_number: finalEnrollment,
       scholar_number: scholar || '',
       program: program,
       club_name: club,
