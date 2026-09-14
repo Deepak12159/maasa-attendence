@@ -4,7 +4,16 @@ import { startOfDay, format } from 'date-fns';
 export interface Student {
   id: string;
   name: string;
-  roll_number: string;
+  roll_number?: string;
+  enrollment_number?: string;
+  scholar_number?: string;
+  program?: string;
+  club_name?: string;
+  mobile_number?: string;
+  year?: string;
+  section?: string;
+  receipt_number?: string;
+  registration_date?: string;
 }
 
 export interface Attendance {
@@ -26,13 +35,21 @@ export interface Settings {
 }
 
 export async function fetchStudents() {
-  const { data, error } = await supabase.from('students').select('*').order('roll_number', { ascending: true });
+  const { data, error } = await supabase
+    .from('students')
+    .select('*')
+    .limit(3000)
+    .order('name', { ascending: true });
   if (error) throw error;
   return data as Student[];
 }
 
 export async function fetchAttendance(dateStr: string) {
-  const { data, error } = await supabase.from('attendance').select('*').eq('date', dateStr);
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('date', dateStr)
+    .limit(3000);
   if (error) throw error;
   return data as Attendance[];
 }
@@ -56,12 +73,10 @@ export async function fetchSettings() {
 
 export async function toggleAttendance(studentId: string, dateStr: string, currentStatus: string | null) {
   if (currentStatus === 'present') {
-    // Delete the record to make it implicitly absent
     const { error } = await supabase.from('attendance').delete().match({ student_id: studentId, date: dateStr });
     if (error) throw error;
     return null;
   } else {
-    // Upsert record to present
     const { data, error } = await supabase
       .from('attendance')
       .upsert({ student_id: studentId, date: dateStr, status: 'present' }, { onConflict: 'student_id,date' })
@@ -70,5 +85,62 @@ export async function toggleAttendance(studentId: string, dateStr: string, curre
     if (error) throw error;
     return data as Attendance;
   }
+}
+
+export async function batchMarkAttendance(studentIds: string[], dateStr: string, status: 'present' | 'absent') {
+  if (studentIds.length === 0) return;
+
+  if (status === 'absent') {
+    // Delete attendance records for these students on this date
+    const { error } = await supabase
+      .from('attendance')
+      .delete()
+      .eq('date', dateStr)
+      .in('student_id', studentIds);
+    if (error) throw error;
+  } else {
+    // Upsert present records in chunks of 100
+    const records = studentIds.map(id => ({
+      student_id: id,
+      date: dateStr,
+      status: 'present'
+    }));
+
+    const chunkSize = 100;
+    for (let i = 0; i < records.length; i += chunkSize) {
+      const chunk = records.slice(i, i + chunkSize);
+      const { error } = await supabase
+        .from('attendance')
+        .upsert(chunk, { onConflict: 'student_id,date' });
+      if (error) throw error;
+    }
+  }
+}
+
+export async function batchUpsertStudents(studentsList: Partial<Student>[]) {
+  // Deduplicate by enrollment_number — PostgreSQL upsert cannot handle
+  // two rows with the same conflict key within the same batch.
+  // Keep the last occurrence of each enrollment_number.
+  const seen = new Map<string, Partial<Student>>();
+  for (const s of studentsList) {
+    const key = s.enrollment_number?.trim() || '';
+    if (key) {
+      seen.set(key, s);
+    }
+    // Students with no enrollment_number are skipped (shouldn't happen with Excel import)
+  }
+  const deduped = Array.from(seen.values());
+
+  const chunkSize = 100;
+  let inserted = 0;
+  for (let i = 0; i < deduped.length; i += chunkSize) {
+    const chunk = deduped.slice(i, i + chunkSize);
+    const { error } = await supabase
+      .from('students')
+      .upsert(chunk, { onConflict: 'enrollment_number' });
+    if (error) throw error;
+    inserted += chunk.length;
+  }
+  return inserted;
 }
 export { supabase };

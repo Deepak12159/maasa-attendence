@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,13 @@ export default function LoginPage() {
   const { user } = useAuth();
 
   // If already logged in, redirect to home
+  useEffect(() => {
+    if (user) {
+      router.push("/");
+    }
+  }, [user, router]);
+
   if (user) {
-    router.push("/");
     return null;
   }
 
@@ -50,8 +55,8 @@ export default function LoginPage() {
           <div className="mx-auto bg-indigo-50 w-12 h-12 rounded-full flex items-center justify-center mb-4 text-indigo-600">
             <LogIn className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Admin Login</h1>
-          <p className="text-slate-500 mt-2">Sign in to manage attendance and settings</p>
+          <h1 className="text-2xl font-bold text-slate-900">Faculty & Admin Login</h1>
+          <p className="text-slate-500 mt-2">Sign in to take attendance, batch mark sections, and manage students</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
