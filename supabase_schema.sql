@@ -23,6 +23,7 @@ create table if not exists public.attendance (
 create table if not exists public.settings (
     id integer primary key default 1,
     working_days integer[] not null default '{1,2,3,4,5}'::integer[], -- 1=Mon, 7=Sun
+    organization_structure jsonb default '[]'::jsonb,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

@@ -29,9 +29,26 @@ export interface Holiday {
   name: string;
 }
 
+export interface OrgSection {
+  name: string;
+  startTime?: string;
+  endTime?: string;
+}
+
+export interface OrgBranch {
+  name: string;
+  sections: OrgSection[];
+}
+
+export interface OrgYear {
+  name: string;
+  branches: OrgBranch[];
+}
+
 export interface Settings {
   id: number;
   working_days: number[];
+  organization_structure: OrgYear[];
 }
 
 export async function fetchStudents() {
@@ -54,6 +71,15 @@ export async function fetchAttendance(dateStr: string) {
   return data as Attendance[];
 }
 
+export async function fetchAllAttendance() {
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('*')
+    .limit(10000);
+  if (error) throw error;
+  return data as Attendance[];
+}
+
 export async function fetchHolidays() {
   const { data, error } = await supabase.from('holidays').select('*');
   if (error) throw error;
@@ -64,11 +90,19 @@ export async function fetchSettings() {
   const { data, error } = await supabase.from('settings').select('*').eq('id', 1).single();
   if (error) {
     if (error.code === 'PGRST116') {
-      return { id: 1, working_days: [1, 2, 3, 4, 5, 6] } as Settings;
+      return { id: 1, working_days: [1, 2, 3, 4, 5, 6], organization_structure: [] } as Settings;
     }
     throw error;
   }
   return data as Settings;
+}
+
+export async function updateOrganizationStructure(structure: OrgYear[]) {
+  const { error } = await supabase
+    .from('settings')
+    .update({ organization_structure: structure })
+    .eq('id', 1);
+  if (error) throw error;
 }
 
 export async function toggleAttendance(studentId: string, dateStr: string, currentStatus: string | null) {
@@ -143,4 +177,17 @@ export async function batchUpsertStudents(studentsList: Partial<Student>[]) {
   }
   return inserted;
 }
+
+export async function deleteStudent(id: string) {
+  await supabase.from('attendance').delete().eq('student_id', id);
+  const { error } = await supabase.from('students').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteAllStudents() {
+  await supabase.from('attendance').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  const { error } = await supabase.from('students').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  if (error) throw error;
+}
+
 export { supabase };

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Users, CalendarDays, Settings, LayoutDashboard, LogIn, LogOut } from "lucide-react";
@@ -13,17 +12,12 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const navItems = [
     { name: "Attendance", href: "/", icon: LayoutDashboard, requiresAuth: false },
     { name: "Students", href: "/students", icon: Users, requiresAuth: true },
     { name: "Settings", href: "/settings", icon: Settings, requiresAuth: true },
-  ].filter(item => !item.requiresAuth || (mounted && user));
+  ].filter(item => !item.requiresAuth || user);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -65,7 +59,7 @@ export function Sidebar() {
           })}
         </nav>
         {user && (
-          <div className="p-4 border-t">
+          <div className="p-4 pb-12 border-t">
             <div className="space-y-2">
               <div className="px-3 py-1 bg-emerald-50 rounded-md text-xs font-semibold text-emerald-700 truncate">
                 🟢 {user.email || "Faculty"}

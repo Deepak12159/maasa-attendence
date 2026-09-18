@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { Student } from './api';
+import { Student, Attendance } from './api';
 
 export function deriveYearFromEnrollment(enrollment: string): string {
   if (!enrollment) return '1st Year';
@@ -110,31 +110,42 @@ export function parseExcelFile(fileData: ArrayBuffer): Partial<Student>[] {
 
 export function exportAttendanceToExcel(
   students: Student[],
-  attendanceMap: Record<string, string>,
-  dateStr: string
+  allAttendance: Attendance[],
+  orgStructure: any[]
 ) {
+  // Simple summary
+  const attendanceRecord: Record<string, Attendance[]> = {};
+  for (const a of allAttendance) {
+    if (!attendanceRecord[a.student_id]) attendanceRecord[a.student_id] = [];
+    attendanceRecord[a.student_id].push(a);
+  }
+
   const rows = students.map((st, index) => {
-    const isPresent = attendanceMap[st.id] === 'present';
+    const stAtt = attendanceRecord[st.id] || [];
+    const presentCount = stAtt.filter(a => a.status === 'present').length;
+    const totalCount = stAtt.length;
+    const percentage = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) + '%' : '0%';
+
     return {
       'S.No': index + 1,
-      'Date': dateStr,
       'Scholar No': st.scholar_number || '',
       'Enrollment No': st.enrollment_number || st.roll_number || '',
       'Student Name': st.name,
       'Year': st.year || '',
       'Program': st.program || '',
-      'Section': st.section || 'Section A',
-      'Status': isPresent ? 'PRESENT' : 'ABSENT',
+      'Section': st.section || '',
+      'Total Days Present': presentCount,
+      'Total Days Recorded': totalCount,
+      'Attendance %': percentage,
       'Mobile': st.mobile_number || '',
     };
   });
 
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Attendance Report');
+  XLSX.utils.book_append_sheet(wb, ws, 'Attendance Summary');
   
-  // Download file
-  XLSX.writeFile(wb, `Sports_Club_Attendance_${dateStr}.xlsx`);
+  XLSX.writeFile(wb, `attendence.xlsx`);
 }
 
 export function downloadAttendanceTemplate(
@@ -235,4 +246,15 @@ export function parseAttendanceImportExcel(
     absentIds,
     totalProcessed: presentIds.length + absentIds.length,
   };
+}
+
+export function downloadStudentImportTemplate() {
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['Name', 'Enrollment Number', 'Scholar Number', 'Program', 'Year', 'Section', 'Mobile', 'Club Name'],
+    ['John Doe', 'EN24CS301001', 'AG24CS301001', 'B.Tech CSE', '3rd Year', 'Section A', '9876543210', 'SPORTS CLUB'],
+    ['Jane Smith', 'EN25EC301005', 'AG25EC301005', 'B.Tech ECE', '2nd Year', 'Section B', '9876543211', 'SPORTS CLUB']
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Student_Import_Template');
+  XLSX.writeFile(wb, 'student_import_template.xlsx');
 }

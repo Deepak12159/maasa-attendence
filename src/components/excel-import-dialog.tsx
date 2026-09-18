@@ -10,15 +10,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { parseExcelFile } from "@/lib/excel";
+import { parseExcelFile, downloadStudentImportTemplate } from "@/lib/excel";
 import { batchUpsertStudents, Student } from "@/lib/api";
 import { toast } from "sonner";
 
 interface ExcelImportDialogProps {
   onSuccess?: () => void;
+  triggerButton?: React.ReactElement;
 }
 
-export function ExcelImportDialog({ onSuccess }: ExcelImportDialogProps) {
+export function ExcelImportDialog({ onSuccess, triggerButton }: ExcelImportDialogProps) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [parsedStudents, setParsedStudents] = useState<Partial<Student>[]>([]);
@@ -77,13 +78,15 @@ export function ExcelImportDialog({ onSuccess }: ExcelImportDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <Button variant="outline" className="bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-sm">
-            <Upload className="w-4 h-4 mr-2 text-indigo-600" />
-            Import Excel
-          </Button>
+          triggerButton || (
+            <Button variant="outline" className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100">
+              <Upload className="w-4 h-4 mr-2" />
+              Import Excel
+            </Button>
+          )
         }
       />
-      <DialogContent className="sm:max-w-[540px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
             <FileSpreadsheet className="w-6 h-6 text-emerald-600" />
@@ -110,6 +113,13 @@ export function ExcelImportDialog({ onSuccess }: ExcelImportDialogProps) {
               disabled={isProcessing}
             />
           </label>
+
+          <div className="flex justify-center mt-2">
+            <Button variant="ghost" size="sm" onClick={downloadStudentImportTemplate} className="text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 text-xs font-semibold">
+              <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" />
+              Download Sample Template
+            </Button>
+          </div>
 
           {parsedStudents.length > 0 && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3">

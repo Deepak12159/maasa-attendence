@@ -11,12 +11,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { supabase } from "@/lib/api";
+import { supabase, fetchSettings } from "@/lib/api";
+import useSWR from "swr";
 import { toast } from "sonner";
 
 interface AddStudentDialogProps {
   onSuccess?: () => void;
-  triggerButton?: React.ReactNode;
+  triggerButton?: React.ReactElement;
 }
 
 export function AddStudentDialog({ onSuccess, triggerButton }: AddStudentDialogProps) {
@@ -29,6 +30,15 @@ export function AddStudentDialog({ onSuccess, triggerButton }: AddStudentDialogP
   const [section, setSection] = useState("Section A");
   const [mobile, setMobile] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: settings } = useSWR('settings', fetchSettings);
+  const orgStructure = settings?.organization_structure || [];
+
+  // Update dropdowns dynamically based on selection
+  const selectedYearObj = orgStructure.find(y => y.name === year);
+  const availableBranches = selectedYearObj ? selectedYearObj.branches : [];
+  const selectedBranchObj = availableBranches.find(b => b.name === program);
+  const availableSections = selectedBranchObj ? selectedBranchObj.sections : [];
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,9 +81,7 @@ export function AddStudentDialog({ onSuccess, triggerButton }: AddStudentDialogP
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          triggerButton ? (
-            <>{triggerButton}</>
-          ) : (
+          triggerButton || (
             <Button variant="outline" className="bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-sm">
               <UserPlus className="w-4 h-4 mr-2 text-indigo-600" />
               Add Student (Manual)
@@ -122,34 +130,88 @@ export function AddStudentDialog({ onSuccess, triggerButton }: AddStudentDialogP
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-slate-700 block mb-1">Year</label>
-              <select
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800"
-              >
-                <option value="1st Year">1st Year</option>
-                <option value="2nd Year">2nd Year</option>
-                <option value="3rd Year">3rd Year</option>
-                <option value="4th Year">4th Year</option>
-              </select>
+              {orgStructure.length > 0 ? (
+                <select
+                  value={year}
+                  onChange={(e) => {
+                    setYear(e.target.value);
+                    const y = orgStructure.find(y => y.name === e.target.value);
+                    if (y && y.branches.length > 0) {
+                      setProgram(y.branches[0].name);
+                      if (y.branches[0].sections.length > 0) {
+                        setSection(y.branches[0].sections[0].name);
+                      }
+                    }
+                  }}
+                  className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800"
+                >
+                  <option value="" disabled>Select Year</option>
+                  {orgStructure.map(y => (
+                    <option key={y.name} value={y.name}>{y.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                  className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800"
+                >
+                  <option value="1st Year">1st Year</option>
+                  <option value="2nd Year">2nd Year</option>
+                  <option value="3rd Year">3rd Year</option>
+                  <option value="4th Year">4th Year</option>
+                </select>
+              )}
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-700 block mb-1">Section</label>
-              <Input
-                value={section}
-                onChange={(e) => setSection(e.target.value)}
-                placeholder="Section A"
-              />
+              {orgStructure.length > 0 ? (
+                <select
+                  value={section}
+                  onChange={(e) => setSection(e.target.value)}
+                  className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800"
+                >
+                  <option value="" disabled>Select Section</option>
+                  {availableSections.map(s => (
+                    <option key={s.name} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  value={section}
+                  onChange={(e) => setSection(e.target.value)}
+                  placeholder="Section A"
+                />
+              )}
             </div>
           </div>
 
           <div>
             <label className="text-xs font-semibold text-slate-700 block mb-1">Program / Branch</label>
-            <Input
-              value={program}
-              onChange={(e) => setProgram(e.target.value)}
-              placeholder="B.Tech Computer Science and Engineering"
-            />
+            {orgStructure.length > 0 ? (
+              <select
+                value={program}
+                onChange={(e) => {
+                  setProgram(e.target.value);
+                  const b = availableBranches.find(b => b.name === e.target.value);
+                  if (b && b.sections.length > 0) {
+                    setSection(b.sections[0].name);
+                  }
+                }}
+                className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800"
+              >
+                <option value="" disabled>Select Program</option>
+                {availableBranches.map(b => (
+                  <option key={b.name} value={b.name}>{b.name}</option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                value={program}
+                onChange={(e) => setProgram(e.target.value)}
+                placeholder="B.Tech Computer Science and Engineering"
+              />
+            )}
           </div>
 
           <div>

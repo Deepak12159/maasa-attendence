@@ -51,3 +51,8 @@ create policy "Allow all on students" on public.students for all using (true) wi
 create policy "Allow all on attendance" on public.attendance for all using (true) with check (true);
 create policy "Allow all on settings" on public.settings for all using (true) with check (true);
 create policy "Allow all on holidays" on public.holidays for all using (true) with check (true);
+
+-- 5. Add organization structure to settings
+alter table public.settings
+  add column if not exists organization_structure jsonb default '[]'::jsonb;
+

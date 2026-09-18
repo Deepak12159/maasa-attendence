@@ -128,3 +128,30 @@
     @apply font-sans;
   }
 }
+
+@utility shadow-premium {
+  box-shadow: 0 4px 20px -2px rgba(79, 70, 229, 0.08), 0 2px 8px -2px rgba(79, 70, 229, 0.04);
+}
+
+@utility shadow-premium-hover {
+  box-shadow: 0 10px 30px -4px rgba(79, 70, 229, 0.12), 0 4px 12px -4px rgba(79, 70, 229, 0.06);
+}
+
+@utility glass-panel {
+  @apply bg-white/80 backdrop-blur-md border border-white/40 shadow-sm;
+}
+
+@utility animate-fade-in-up {
+  animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

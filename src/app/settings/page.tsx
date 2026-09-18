@@ -7,7 +7,7 @@ import { Trash2, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase, fetchHolidays, fetchSettings } from "@/lib/api";
+import { supabase, fetchHolidays, fetchSettings, updateOrganizationStructure, OrgYear, OrgBranch, OrgSection } from "@/lib/api";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
@@ -40,12 +40,17 @@ export default function SettingsPage() {
     }
   }, [user, authLoading, router]);
 
-  // Local state for working days
+  // Local state for working days and organization
   const [workingDays, setWorkingDays] = useState<number[]>([]);
+  const [orgStructure, setOrgStructure] = useState<OrgYear[]>([]);
+  const [isSavingOrg, setIsSavingOrg] = useState(false);
 
   // Sync settings when loaded
   if (settings && workingDays.length === 0 && !isSavingDays) {
     setWorkingDays(settings.working_days);
+  }
+  if (settings && orgStructure.length === 0 && !isSavingOrg && settings.organization_structure) {
+    setOrgStructure(settings.organization_structure);
   }
 
   const handleAddHoliday = async (e: React.FormEvent) => {
@@ -101,6 +106,68 @@ export default function SettingsPage() {
     }
   };
 
+  const saveOrgStructure = async () => {
+    setIsSavingOrg(true);
+    try {
+      await updateOrganizationStructure(orgStructure);
+      toast.success("Organization structure saved");
+      mutateSettings();
+    } catch {
+      toast.error("Failed to save organization structure");
+    } finally {
+      setIsSavingOrg(false);
+    }
+  };
+
+  const addYear = () => {
+    const yearName = prompt("Enter Year Name (e.g., 1st Year):");
+    if (!yearName) return;
+    setOrgStructure([...orgStructure, { name: yearName, branches: [] }]);
+  };
+
+  const addBranch = (yearIndex: number) => {
+    const branchName = prompt("Enter Branch/Program Name (e.g., CSE):");
+    if (!branchName) return;
+    const newOrg = [...orgStructure];
+    newOrg[yearIndex].branches.push({ name: branchName, sections: [] });
+    setOrgStructure(newOrg);
+  };
+
+  const addSection = (yearIndex: number, branchIndex: number) => {
+    const sectionName = prompt("Enter Section Name (e.g., A):");
+    if (!sectionName) return;
+    const newOrg = [...orgStructure];
+    newOrg[yearIndex].branches[branchIndex].sections.push({ name: sectionName, startTime: "09:00", endTime: "10:00" });
+    setOrgStructure(newOrg);
+  };
+
+  const removeYear = (yearIndex: number) => {
+    if (!confirm("Are you sure you want to delete this year and all its branches/sections?")) return;
+    const newOrg = [...orgStructure];
+    newOrg.splice(yearIndex, 1);
+    setOrgStructure(newOrg);
+  };
+
+  const removeBranch = (yearIndex: number, branchIndex: number) => {
+    if (!confirm("Are you sure you want to delete this branch?")) return;
+    const newOrg = [...orgStructure];
+    newOrg[yearIndex].branches.splice(branchIndex, 1);
+    setOrgStructure(newOrg);
+  };
+
+  const removeSection = (yearIndex: number, branchIndex: number, sectionIndex: number) => {
+    if (!confirm("Are you sure you want to delete this section?")) return;
+    const newOrg = [...orgStructure];
+    newOrg[yearIndex].branches[branchIndex].sections.splice(sectionIndex, 1);
+    setOrgStructure(newOrg);
+  };
+
+  const updateSectionTime = (yearIndex: number, branchIndex: number, sectionIndex: number, field: 'startTime' | 'endTime', value: string) => {
+    const newOrg = [...orgStructure];
+    newOrg[yearIndex].branches[branchIndex].sections[sectionIndex][field] = value;
+    setOrgStructure(newOrg);
+  };
+
   if (authLoading || !user) return null;
 
   if (loadingHolidays || loadingSettings) {
@@ -122,6 +189,7 @@ export default function SettingsPage() {
         <TabsList className="mb-6 bg-slate-100/50">
           <TabsTrigger value="holidays" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Holidays</TabsTrigger>
           <TabsTrigger value="working-days" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Working Days</TabsTrigger>
+          <TabsTrigger value="organization" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Organization</TabsTrigger>
         </TabsList>
         
         <TabsContent value="holidays">
@@ -199,6 +267,95 @@ export default function SettingsPage() {
               {isSavingDays ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               Save Working Days
             </Button>
+          </div>
+        </TabsContent>
+        <TabsContent value="organization">
+          <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-semibold text-lg">Organization Structure</h3>
+              <Button onClick={addYear} variant="outline" size="sm">
+                + Add Year
+              </Button>
+            </div>
+            
+            {orgStructure.length === 0 ? (
+              <div className="text-center p-8 border-2 border-dashed border-slate-200 rounded-xl text-slate-500">
+                No organization structure defined. Click "Add Year" to start.
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {orgStructure.map((year, yIdx) => (
+                  <div key={yIdx} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="font-bold text-lg text-slate-800">{year.name}</h4>
+                      <div className="space-x-2">
+                        <Button onClick={() => addBranch(yIdx)} size="sm" variant="secondary" className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200">
+                          + Add Branch
+                        </Button>
+                        <Button onClick={() => removeYear(yIdx)} size="sm" variant="ghost" className="text-red-500">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pl-4 border-l-2 border-indigo-100 ml-2">
+                      {year.branches.map((branch, bIdx) => (
+                        <div key={bIdx} className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                          <div className="flex justify-between items-center mb-3">
+                            <h5 className="font-semibold text-slate-700">{branch.name}</h5>
+                            <div className="space-x-2">
+                              <Button onClick={() => addSection(yIdx, bIdx)} size="sm" variant="outline" className="h-8">
+                                + Add Section
+                              </Button>
+                              <Button onClick={() => removeBranch(yIdx, bIdx)} size="sm" variant="ghost" className="h-8 text-red-500">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-4">
+                            {branch.sections.map((section, sIdx) => (
+                              <div key={sIdx} className="flex items-center gap-2 bg-slate-50 p-2 rounded border border-slate-100">
+                                <span className="font-medium text-sm min-w-[80px]">{section.name}</span>
+                                <Input 
+                                  type="time" 
+                                  value={section.startTime || ''} 
+                                  onChange={(e) => updateSectionTime(yIdx, bIdx, sIdx, 'startTime', e.target.value)}
+                                  className="h-8 text-xs w-28"
+                                />
+                                <span className="text-xs text-slate-500">to</span>
+                                <Input 
+                                  type="time" 
+                                  value={section.endTime || ''} 
+                                  onChange={(e) => updateSectionTime(yIdx, bIdx, sIdx, 'endTime', e.target.value)}
+                                  className="h-8 text-xs w-28"
+                                />
+                                <Button onClick={() => removeSection(yIdx, bIdx, sIdx)} size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:text-red-600">
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))}
+                            {branch.sections.length === 0 && (
+                              <div className="text-xs text-slate-400 italic">No sections added yet.</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {year.branches.length === 0 && (
+                        <div className="text-sm text-slate-400 italic py-2">No branches added yet.</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-8 pt-4 border-t border-slate-100">
+              <Button onClick={saveOrgStructure} disabled={isSavingOrg} className="bg-indigo-600 hover:bg-indigo-700 w-full sm:w-auto">
+                {isSavingOrg ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Save Organization Structure
+              </Button>
+            </div>
           </div>
         </TabsContent>
       </Tabs>

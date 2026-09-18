@@ -19,9 +19,10 @@ interface ExcelAttendanceDialogProps {
   attendanceMap: Record<string, string>;
   dateStr: string;
   onSuccess?: () => void;
+  triggerButton?: React.ReactElement;
 }
 
-export function ExcelAttendanceDialog({ students, attendanceMap, dateStr, onSuccess }: ExcelAttendanceDialogProps) {
+export function ExcelAttendanceDialog({ students, attendanceMap, dateStr, onSuccess, triggerButton }: ExcelAttendanceDialogProps) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -92,13 +93,12 @@ export function ExcelAttendanceDialog({ students, attendanceMap, dateStr, onSucc
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <Button
-            variant="outline"
-            className="bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100 font-semibold shadow-sm"
-          >
-            <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-600" />
-            Mark via Excel
-          </Button>
+          triggerButton || (
+            <Button variant="outline" className="h-11 bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 shadow-sm rounded-xl transition-all active:scale-95">
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Mark via Excel
+            </Button>
+          )
         }
       />
       <DialogContent className="sm:max-w-md">

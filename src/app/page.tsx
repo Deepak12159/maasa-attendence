@@ -30,6 +30,9 @@ import {
   LogIn,
   ShieldCheck,
   Lock,
+  UserPlus,
+  Settings,
+  FileSpreadsheet,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth-provider";
@@ -44,6 +47,7 @@ import { cn } from "@/lib/utils";
 import {
   fetchStudents,
   fetchAttendance,
+  fetchAllAttendance,
   fetchHolidays,
   fetchSettings,
   toggleAttendance,
@@ -304,209 +308,275 @@ export default function AttendancePage() {
   }, [students, searchQuery]);
 
   // Export to Excel handler
-  const handleExport = () => {
+  const handleExport = async () => {
     if (students.length === 0) {
       toast.error("No students to export");
       return;
     }
-    exportAttendanceToExcel(students, attendanceMap, dateStr);
-    toast.success("Excel report downloaded!");
+    const toastId = toast.loading("Generating Excel...");
+    try {
+      const allAttendance = await fetchAllAttendance();
+      exportAttendanceToExcel(students, allAttendance, settings?.organization_structure || []);
+      toast.success("Excel report downloaded!", { id: toastId });
+    } catch (e) {
+      toast.error("Failed to export attendance", { id: toastId });
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/70 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Top Header Card */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 animate-fade-in-up">
+      <div className="max-w-7xl mx-auto space-y-8">
+        
+        {/* Premium Header & Stats Dashboard */}
+        <div className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-premium">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-10">
+            {/* Title Section */}
             <div>
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
-                  <Trophy className="w-7 h-7" />
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-700 text-white rounded-2xl shadow-md">
+                  <Trophy className="w-8 h-8" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">
-                      Sports Club Attendance
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+                      Sports Club
                     </h1>
-                    <span className="bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                    <span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest border border-indigo-100">
                       MASA
                     </span>
                     {mounted && user && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-                        <ShieldCheck className="w-3.5 h-3.5" />
-                        Faculty Mode
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                        <ShieldCheck className="w-4 h-4" />
+                        Faculty
                       </span>
                     )}
                   </div>
-                  <p className="text-slate-500 text-sm mt-0.5">
-                    Excel-Style Expand & Collapse Register for Sports Faculty
+                  <p className="text-slate-500 text-sm mt-1.5 font-medium">
+                    Attendance Dashboard & Register
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Date Controls */}
-            <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setDate((d) => subDays(d, 1))}
-                className="h-9 w-9 text-slate-600 hover:text-indigo-600 hover:bg-white"
-                title="Previous Day"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </Button>
-
-              <Popover>
-                <PopoverTrigger
-                  render={
-                    <Button
-                      variant="outline"
-                      className="bg-white text-slate-800 font-semibold px-4 h-9 shadow-sm border-slate-200 hover:border-indigo-300"
-                      suppressHydrationWarning
-                    />
-                  }
+            {/* Premium Action Toolbar */}
+            <div className="flex flex-wrap items-center gap-3 bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200/60 backdrop-blur-sm">
+              {/* Date Controls */}
+              <div className="flex items-center gap-1 bg-white p-1 rounded-xl shadow-sm border border-slate-100">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setDate((d) => subDays(d, 1))}
+                  className="h-9 w-9 text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 transition-colors"
+                  title="Previous Day"
                 >
-                  <CalendarIcon className="w-4 h-4 mr-2 text-indigo-600" />
-                  <span suppressHydrationWarning>{format(date, "EEE, dd MMM yyyy")}</span>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(d) => d && setDate(d)}
-                    fromDate={new Date(2026, 7, 15)}
-                  />
-                </PopoverContent>
-              </Popover>
+                  <ChevronLeft className="w-5 h-5" />
+                </Button>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setDate((d) => addDays(d, 1))}
-                className="h-9 w-9 text-slate-600 hover:text-indigo-600 hover:bg-white"
-                title="Next Day"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </Button>
+                <Popover>
+                  <PopoverTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        className="text-slate-700 font-bold px-4 h-9 hover:text-indigo-700 hover:bg-indigo-50 transition-colors"
+                        suppressHydrationWarning
+                      />
+                    }
+                  >
+                    <CalendarIcon className="w-4 h-4 mr-2 text-indigo-600" />
+                    <span suppressHydrationWarning>{format(date, "MMM dd, yyyy")}</span>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 rounded-2xl overflow-hidden shadow-premium" align="center">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={(d) => d && setDate(d)}
+                      disabled={{ before: new Date(2026, 7, 15) }}
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setDate((d) => addDays(d, 1))}
+                  className="h-9 w-9 text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 transition-colors"
+                  title="Next Day"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </Button>
+              </div>
 
               {mounted && !isToday(date) && (
                 <Button
                   variant="secondary"
                   size="sm"
                   onClick={() => setDate(new Date())}
-                  className="h-9 text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                  className="h-11 px-4 text-xs font-bold bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors rounded-xl"
                 >
-                  Jump to Today
+                  Today
                 </Button>
               )}
-            </div>
 
-            {/* Action Buttons: Only shown when logged in, plus Report Export */}
-            <div className="flex flex-wrap items-center gap-2">
+              <div className="w-px h-8 bg-slate-200 mx-1 hidden sm:block"></div>
+
+              {/* Action Buttons */}
               {mounted && user && (
-                <>
-                  <ExcelAttendanceDialog
-                    students={students}
-                    attendanceMap={attendanceMap}
-                    dateStr={dateStr}
-                    onSuccess={() => mutateAttendance()}
+                <Popover>
+                  <PopoverTrigger
+                    render={
+                      <Button variant="outline" className="h-11 bg-white border-slate-200 hover:bg-slate-50 hover:border-indigo-300 text-slate-700 shadow-sm rounded-xl transition-all active:scale-95">
+                        <Settings className="w-4 h-4 mr-2 text-indigo-600" />
+                        Admin Actions
+                        <ChevronDown className="w-4 h-4 ml-2 text-slate-400" />
+                      </Button>
+                    }
                   />
+                  <PopoverContent className="w-56 p-2 rounded-2xl shadow-premium border-slate-100 flex flex-col gap-1" align="end">
+                    <div className="px-3 py-2 mb-1 border-b border-slate-100">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Manage Register</span>
+                    </div>
+                    <ExcelAttendanceDialog
+                      students={students}
+                      attendanceMap={attendanceMap}
+                      dateStr={dateStr}
+                      onSuccess={() => mutateAttendance()}
+                      triggerButton={
+                        <Button variant="ghost" className="w-full justify-start h-10 px-3 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 font-medium rounded-xl transition-colors">
+                          <FileSpreadsheet className="w-4 h-4 mr-2" />
+                          Mark via Excel
+                        </Button>
+                      }
+                    />
 
-                  <AddStudentDialog onSuccess={() => mutateStudents()} />
+                    <AddStudentDialog 
+                      onSuccess={() => mutateStudents()} 
+                      triggerButton={
+                        <Button variant="ghost" className="w-full justify-start h-10 px-3 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 font-medium rounded-xl transition-colors">
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Add Student
+                        </Button>
+                      }
+                    />
 
-                  <ExcelImportDialog onSuccess={() => mutateStudents()} />
-                </>
+                    <ExcelImportDialog 
+                      onSuccess={() => mutateStudents()} 
+                      triggerButton={
+                        <Button variant="ghost" className="w-full justify-start h-10 px-3 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 font-medium rounded-xl transition-colors">
+                          <Download className="w-4 h-4 mr-2" />
+                          Import Data
+                        </Button>
+                      }
+                    />
+                  </PopoverContent>
+                </Popover>
               )}
 
               <Button
-                variant="outline"
                 onClick={handleExport}
-                className="bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-sm text-xs font-semibold"
+                className="h-11 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-md rounded-xl font-bold transition-all active:scale-95 border-0"
                 title="Download Attendance Report (.xlsx)"
               >
-                <Download className="w-4 h-4 mr-1.5 text-emerald-600" />
-                Report (.xlsx)
+                <Download className="w-4 h-4 mr-2" />
+                Export
               </Button>
             </div>
           </div>
 
-          {/* Quick Statistics Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-100">
-            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
-              <div className="text-xs font-medium text-slate-500">Total Registered</div>
-              <div className="text-2xl font-bold text-slate-800 mt-0.5">{totalStudentsCount}</div>
+          {/* Premium Metric Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-2xl p-5 border border-slate-200/60 shadow-sm relative overflow-hidden group">
+              <div className="absolute -right-4 -top-4 w-16 h-16 bg-slate-200/40 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+              <div className="flex items-center justify-between mb-3 relative z-10">
+                <span className="text-sm font-semibold text-slate-600">Total Enrolled</span>
+                <Users className="w-5 h-5 text-slate-400" />
+              </div>
+              <div className="text-3xl font-black text-slate-800 relative z-10">{totalStudentsCount}</div>
             </div>
 
-            <div className="bg-emerald-50/70 rounded-xl p-3.5 border border-emerald-100">
-              <div className="text-xs font-medium text-emerald-700">Present Today</div>
-              <div className="text-2xl font-bold text-emerald-700 mt-0.5">{presentStudentsCount}</div>
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-2xl p-5 border border-emerald-200/60 shadow-sm relative overflow-hidden group">
+              <div className="absolute -right-4 -top-4 w-16 h-16 bg-emerald-200/40 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+              <div className="flex items-center justify-between mb-3 relative z-10">
+                <span className="text-sm font-semibold text-emerald-800">Present</span>
+                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+              </div>
+              <div className="text-3xl font-black text-emerald-700 relative z-10">{presentStudentsCount}</div>
             </div>
 
-            <div className="bg-rose-50/70 rounded-xl p-3.5 border border-rose-100">
-              <div className="text-xs font-medium text-rose-700">Absent Today</div>
-              <div className="text-2xl font-bold text-rose-700 mt-0.5">{absentStudentsCount}</div>
+            <div className="bg-gradient-to-br from-rose-50 to-rose-100/50 rounded-2xl p-5 border border-rose-200/60 shadow-sm relative overflow-hidden group">
+              <div className="absolute -right-4 -top-4 w-16 h-16 bg-rose-200/40 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+              <div className="flex items-center justify-between mb-3 relative z-10">
+                <span className="text-sm font-semibold text-rose-800">Absent</span>
+                <XCircle className="w-5 h-5 text-rose-500" />
+              </div>
+              <div className="text-3xl font-black text-rose-700 relative z-10">{absentStudentsCount}</div>
             </div>
 
-            <div className="bg-indigo-50/70 rounded-xl p-3.5 border border-indigo-100">
-              <div className="text-xs font-medium text-indigo-700">Attendance Rate</div>
-              <div className="text-2xl font-bold text-indigo-700 mt-0.5">{attendancePercent}%</div>
+            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-2xl p-5 border border-indigo-200/60 shadow-sm relative overflow-hidden group">
+              <div className="absolute -right-4 -top-4 w-16 h-16 bg-indigo-200/40 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+              <div className="flex items-center justify-between mb-3 relative z-10">
+                <span className="text-sm font-semibold text-indigo-800">Rate</span>
+                <Sparkles className="w-5 h-5 text-indigo-500" />
+              </div>
+              <div className="text-3xl font-black text-indigo-700 relative z-10">{attendancePercent}%</div>
             </div>
           </div>
         </div>
 
-        {/* Global Live Search Bar */}
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-            <Search className="w-5 h-5" />
+        {/* Search & Hierarchy Controls Container */}
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          {/* Premium Live Search Bar */}
+          <div className="relative w-full md:w-1/2 lg:w-1/3 group">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+              <Search className="w-5 h-5" />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by Name, Scholar No..."
+              className="w-full pl-12 pr-12 py-3.5 bg-white rounded-2xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            )}
           </div>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search student by Name, Scholar No (e.g. 2401936), or Enrollment No (e.g. EN26CS...)..."
-            className="w-full pl-11 pr-4 py-3.5 bg-white rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute inset-y-0 right-0 pr-4 flex items-center text-xs font-semibold text-slate-400 hover:text-slate-600"
-            >
-              Clear
-            </button>
+
+          {/* Expand / Collapse All Controls */}
+          {!searchQuery && (
+            <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm w-full md:w-auto overflow-x-auto">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">
+                <Layers className="w-4 h-4 text-indigo-500" />
+                Year <span className="text-slate-300">➔</span> Branch <span className="text-slate-300">➔</span> Sec
+              </div>
+              <div className="w-px h-6 bg-slate-200"></div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={expandAll}
+                  className="text-xs font-bold text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl"
+                >
+                  <ChevronDown className="w-4 h-4 mr-1.5" />
+                  Expand
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={collapseAll}
+                  className="text-xs font-bold text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl"
+                >
+                  <ChevronUp className="w-4 h-4 mr-1.5" />
+                  Collapse
+                </Button>
+              </div>
+            </div>
           )}
         </div>
-
-        {/* Expand / Collapse All Controls */}
-        {!searchQuery && (
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              <Layers className="w-4 h-4 text-indigo-600" />
-              Hierarchy: Year ➔ Branch ➔ Section ➔ Students
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={expandAll}
-                className="text-xs font-medium text-slate-600 hover:text-indigo-600 hover:bg-white"
-              >
-                <ChevronDown className="w-3.5 h-3.5 mr-1" />
-                Expand All
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={collapseAll}
-                className="text-xs font-medium text-slate-600 hover:text-indigo-600 hover:bg-white"
-              >
-                <ChevronUp className="w-3.5 h-3.5 mr-1" />
-                Collapse All
-              </Button>
-            </div>
-          </div>
-        )}
 
         {/* Main Body */}
         {isLoading ? (
@@ -528,29 +598,32 @@ export default function AttendancePage() {
           </div>
         ) : searchResults !== null ? (
           /* Instant Search Results View */
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-4 bg-indigo-50/70 border-b border-indigo-100 flex items-center justify-between">
-              <div className="font-semibold text-indigo-950 text-sm">
-                Found {searchResults.length} matching students for &quot;{searchQuery}&quot;
+          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-premium overflow-hidden">
+            <div className="p-5 bg-gradient-to-r from-indigo-50/80 to-white border-b border-indigo-100/50 flex items-center justify-between">
+              <div className="font-bold text-indigo-900 text-sm flex items-center gap-2">
+                <Search className="w-4 h-4 text-indigo-500" />
+                Found {searchResults.length} matching student{searchResults.length === 1 ? '' : 's'} for &quot;{searchQuery}&quot;
               </div>
             </div>
 
             {searchResults.length === 0 ? (
-              <div className="p-12 text-center text-slate-500">
-                No students found matching your search. Try searching by scholar number or last name.
+              <div className="p-16 text-center text-slate-500 flex flex-col items-center">
+                <Search className="w-12 h-12 text-slate-200 mb-4" />
+                <h3 className="text-lg font-bold text-slate-700 mb-1">No matches found</h3>
+                <p className="text-sm">Try searching by a different name, scholar number, or enrollment number.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase">
+                  <thead className="bg-slate-50/80 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
                     <tr>
-                      <th className="px-4 py-3 w-12 text-center">#</th>
-                      <th className="px-4 py-3">Scholar No</th>
-                      <th className="px-4 py-3">Enrollment No</th>
-                      <th className="px-4 py-3">Student Name</th>
-                      <th className="px-4 py-3">Year & Program</th>
-                      <th className="px-4 py-3">Section</th>
-                      <th className="px-4 py-3 text-right">Attendance</th>
+                      <th className="px-5 py-4 w-12 text-center">#</th>
+                      <th className="px-5 py-4">Scholar No</th>
+                      <th className="px-5 py-4">Enrollment No</th>
+                      <th className="px-5 py-4">Student Name</th>
+                      <th className="px-5 py-4">Year & Program</th>
+                      <th className="px-5 py-4">Section</th>
+                      <th className="px-5 py-4 text-right">Attendance</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -560,47 +633,47 @@ export default function AttendancePage() {
                         <tr
                           key={st.id}
                           className={cn(
-                            "hover:bg-slate-50/80 transition-colors",
-                            isPresent && "bg-emerald-50/40"
+                            "hover:bg-slate-50/80 transition-colors group",
+                            isPresent && "bg-emerald-50/30 hover:bg-emerald-50/60"
                           )}
                         >
-                          <td className="px-4 py-3 text-center text-slate-400 font-mono text-xs">
+                          <td className="px-5 py-4 text-center text-slate-400 font-mono text-xs">
                             {idx + 1}
                           </td>
-                          <td className="px-4 py-3 font-semibold text-slate-900 font-mono">
+                          <td className="px-5 py-4 font-bold text-slate-900 font-mono text-sm">
                             {st.scholar_number || '-'}
                           </td>
-                          <td className="px-4 py-3 text-slate-600 font-mono text-xs">
+                          <td className="px-5 py-4 text-slate-500 font-mono text-xs">
                             {st.enrollment_number || st.roll_number || '-'}
                           </td>
-                          <td className="px-4 py-3 font-medium text-slate-900">
+                          <td className="px-5 py-4 font-bold text-slate-800">
                             {st.name}
                           </td>
-                          <td className="px-4 py-3 text-xs text-slate-600">
-                            <span className="font-semibold text-indigo-600">{st.year || '1st Year'}</span> - {st.program || 'B.Tech CSE'}
+                          <td className="px-5 py-4 text-xs text-slate-600">
+                            <span className="font-bold text-indigo-600">{st.year || '1st Year'}</span> <span className="text-slate-300 mx-1">•</span> {st.program || 'B.Tech CSE'}
                           </td>
-                          <td className="px-4 py-3 text-xs font-semibold text-slate-700">
+                          <td className="px-5 py-4 text-xs font-bold text-slate-700">
                             {st.section || 'Section A'}
                           </td>
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-5 py-4 text-right">
                             {user ? (
                               <button
                                 onClick={() => handleToggle(st.id, isPresent ? 'present' : null)}
                                 className={cn(
-                                  "inline-flex items-center justify-center px-4 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm",
+                                  "inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-black transition-all",
                                   isPresent
-                                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                                    : "bg-slate-100 text-slate-600 border border-slate-300 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
+                                    ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-600 active:scale-95"
+                                    : "bg-slate-100 text-slate-500 border border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-sm active:scale-95"
                                 )}
                               >
                                 {isPresent ? (
                                   <>
-                                    <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                                    <CheckCircle2 className="w-4 h-4 mr-1.5" />
                                     PRESENT
                                   </>
                                 ) : (
                                   <>
-                                    <XCircle className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                                    <XCircle className="w-4 h-4 mr-1.5 text-slate-400" />
                                     ABSENT
                                   </>
                                 )}
@@ -608,9 +681,9 @@ export default function AttendancePage() {
                             ) : (
                               <span
                                 className={cn(
-                                  "inline-flex items-center justify-center px-3 py-1 rounded-md text-xs font-bold",
+                                  "inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-black transition-all",
                                   isPresent
-                                    ? "bg-emerald-100 text-emerald-800"
+                                    ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
                                     : "bg-slate-100 text-slate-500 border border-slate-200"
                                 )}
                               >
@@ -671,50 +744,57 @@ export default function AttendancePage() {
                   {/* LEVEL 1: Year Header Card */}
                   <button
                     onClick={() => toggleYear(yearGroup.year)}
-                    className="w-full flex items-center justify-between p-5 text-left bg-gradient-to-r from-slate-50 to-white hover:from-indigo-50/40 hover:to-white transition-colors border-b border-slate-100"
+                    className="w-full flex items-center justify-between p-5 text-left bg-gradient-to-r from-slate-50 to-white hover:from-indigo-50/40 hover:to-white transition-colors border-b border-slate-100 group"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-indigo-600 text-white">
-                        {isYearOpen ? <FolderOpen className="w-5 h-5" /> : <Folder className="w-5 h-5" />}
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-md group-hover:scale-105 transition-transform">
+                        {isYearOpen ? <FolderOpen className="w-6 h-6" /> : <Folder className="w-6 h-6" />}
                       </div>
                       <div>
-                        <h2 className="text-lg md:text-xl font-bold text-slate-900">
+                        <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
                           {yearGroup.year}
                         </h2>
-                        <span className="text-xs font-medium text-slate-500">
-                          {yearGroup.programs.length} Branches • {yearTotal} Students Registered
+                        <span className="text-sm font-semibold text-slate-500">
+                          {yearGroup.programs.length} Branches <span className="mx-1 text-slate-300">•</span> {yearTotal} Students
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-6">
                       <div className="hidden sm:flex flex-col items-end">
-                        <span className="text-xs font-semibold text-slate-700">
-                          {yearPresent} / {yearTotal} Present
+                        <span className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          Attendance
                         </span>
-                        <div className="w-24 h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
-                          <div
-                            className="h-full bg-emerald-500 rounded-full"
-                            style={{ width: `${yearPercent}%` }}
-                          />
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-slate-800">
+                            {yearPresent} <span className="text-slate-400">/ {yearTotal}</span>
+                          </span>
+                          <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                            <div
+                              className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full"
+                              style={{ width: `${yearPercent}%` }}
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full">
+                      <span className="bg-emerald-100/80 text-emerald-800 text-sm font-black px-3 py-1.5 rounded-xl border border-emerald-200">
                         {yearPercent}%
                       </span>
 
-                      {isYearOpen ? (
-                        <ChevronUp className="w-5 h-5 text-slate-400" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-slate-400" />
-                      )}
+                      <div className="p-2 bg-slate-50 rounded-full group-hover:bg-indigo-50 transition-colors">
+                        {isYearOpen ? (
+                          <ChevronUp className="w-5 h-5 text-slate-500 group-hover:text-indigo-600" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-slate-500 group-hover:text-indigo-600" />
+                        )}
+                      </div>
                     </div>
                   </button>
 
                   {/* LEVEL 2: Programs inside Year */}
                   {isYearOpen && (
-                    <div className="p-4 sm:p-6 space-y-4 bg-slate-50/50">
+                    <div className="p-2 sm:p-4 space-y-3 bg-slate-50/30">
                       {yearGroup.programs.map((progGroup) => {
                         const progKey = `${yearGroup.year}__${progGroup.program}`;
                         const isProgOpen = Boolean(expandedPrograms[progKey]);
@@ -738,35 +818,37 @@ export default function AttendancePage() {
                             {/* Program Header */}
                             <button
                               onClick={() => toggleProgram(progKey)}
-                              className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 transition-colors"
+                              className="w-full flex items-center justify-between p-5 text-left hover:bg-slate-50/80 transition-colors group"
                             >
                               <div className="flex items-center gap-3">
-                                <div className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+                                <div className="w-3 h-3 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
                                 <div>
-                                  <h3 className="text-base font-bold text-slate-800">
+                                  <h3 className="text-lg font-bold text-slate-800">
                                     {progGroup.program}
                                   </h3>
-                                  <span className="text-xs text-slate-500">
-                                    {progGroup.sections.length} Section{progGroup.sections.length > 1 ? 's' : ''} • {progTotal} Students
+                                  <span className="text-xs font-semibold text-slate-500">
+                                    {progGroup.sections.length} Section{progGroup.sections.length > 1 ? 's' : ''} <span className="mx-1 text-slate-300">•</span> {progTotal} Students
                                   </span>
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-3">
-                                <span className="text-xs font-medium text-slate-600">
+                              <div className="flex items-center gap-4">
+                                <span className="text-xs font-bold bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg">
                                   {progPresent} / {progTotal} Present
                                 </span>
-                                {isProgOpen ? (
-                                  <ChevronUp className="w-4 h-4 text-slate-400" />
-                                ) : (
-                                  <ChevronDown className="w-4 h-4 text-slate-400" />
-                                )}
+                                <div className="p-1.5 bg-slate-50 rounded-lg group-hover:bg-indigo-50 transition-colors">
+                                  {isProgOpen ? (
+                                    <ChevronUp className="w-4 h-4 text-slate-500 group-hover:text-indigo-600" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4 text-slate-500 group-hover:text-indigo-600" />
+                                  )}
+                                </div>
                               </div>
                             </button>
 
                             {/* LEVEL 3: Sections inside Program */}
                             {isProgOpen && (
-                              <div className="p-4 border-t border-slate-100 space-y-4 bg-slate-50/30">
+                              <div className="p-2 sm:p-3 border-t border-slate-100 space-y-3 bg-white">
                                 {progGroup.sections.map((secGroup) => {
                                   const secKey = `${progKey}__${secGroup.section}`;
                                   const isSecOpen = expandedSections[secKey] !== false; // default open inside opened program
@@ -781,79 +863,82 @@ export default function AttendancePage() {
                                   return (
                                     <div
                                       key={secKey}
-                                      className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs"
+                                      className="bg-slate-50/50 rounded-xl border border-slate-100 overflow-hidden"
                                     >
                                       {/* Section Header with Quick Batch Actions */}
-                                      <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                        <button
-                                          onClick={() => toggleSection(secKey)}
-                                          className="flex items-center gap-2 text-left"
-                                        >
-                                          <span className="font-bold text-slate-900 text-sm">
-                                            {secGroup.section}
+                                      <button
+                                        onClick={() => toggleSection(secKey)}
+                                        className="w-full flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white hover:bg-slate-50 transition-colors border-b border-slate-100 group text-left gap-3"
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
+                                          <span className="font-bold text-slate-800 text-sm sm:text-base">
+                                            Section {secGroup.section}
                                           </span>
-                                          <span className="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-md">
-                                            {secPresent}/{secTotal} Present ({secPercent}%)
+                                          <span className="text-xs bg-slate-50 border border-slate-200 text-slate-600 font-bold px-2 py-0.5 rounded-md shadow-sm">
+                                            {secPresent}/{secTotal} <span className="text-slate-300 mx-1">|</span> {secPercent}%
                                           </span>
-                                          {isSecOpen ? (
-                                            <ChevronUp className="w-4 h-4 text-slate-400" />
-                                          ) : (
-                                            <ChevronDown className="w-4 h-4 text-slate-400" />
+                                        </div>
+
+                                        <div className="flex items-center gap-4">
+                                          {/* 1-Click Fast Batch Buttons for Sir */}
+                                          {user && (
+                                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                              <Button
+                                                size="sm"
+                                                onClick={() =>
+                                                  handleBatchMark(
+                                                    studentIds,
+                                                    'present',
+                                                    `${progGroup.program} - ${secGroup.section}`
+                                                  )
+                                                }
+                                                className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold shadow-sm h-8 px-3 rounded-lg transition-all active:scale-95"
+                                              >
+                                                <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                                                Present All
+                                              </Button>
+
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                  handleBatchMark(
+                                                    studentIds,
+                                                    'absent',
+                                                    `${progGroup.program} - ${secGroup.section}`
+                                                  )
+                                                }
+                                                className="text-rose-600 hover:text-white hover:bg-rose-500 border-rose-200 text-xs font-bold h-8 px-3 rounded-lg transition-all active:scale-95 bg-rose-50"
+                                              >
+                                                <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                                                Absent All
+                                              </Button>
+                                            </div>
                                           )}
-                                        </button>
 
-                                        {/* 1-Click Fast Batch Buttons for Sir */}
-                                        {user && (
-                                          <div className="flex items-center gap-2">
-                                            <Button
-                                              size="sm"
-                                              onClick={() =>
-                                                handleBatchMark(
-                                                  studentIds,
-                                                  'present',
-                                                  `${progGroup.program} - ${secGroup.section}`
-                                                )
-                                              }
-                                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs h-7 px-2.5"
-                                            >
-                                              <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                                              Mark All Present
-                                            </Button>
-
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              onClick={() =>
-                                                handleBatchMark(
-                                                  studentIds,
-                                                  'absent',
-                                                  `${progGroup.program} - ${secGroup.section}`
-                                                )
-                                              }
-                                              className="text-slate-600 hover:text-rose-600 hover:bg-rose-50 border-slate-200 text-xs font-medium h-7 px-2.5"
-                                            >
-                                              <XCircle className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                                              Mark All Absent
-                                            </Button>
+                                          <div className="p-1 bg-white rounded shadow-sm border border-slate-200 group-hover:border-indigo-300 transition-colors">
+                                            {isSecOpen ? (
+                                              <ChevronUp className="w-4 h-4 text-slate-500 group-hover:text-indigo-600" />
+                                            ) : (
+                                              <ChevronDown className="w-4 h-4 text-slate-500 group-hover:text-indigo-600" />
+                                            )}
                                           </div>
-                                        )}
-                                      </div>
+                                        </div>
+                                      </button>
 
                                       {/* LEVEL 4: Excel Spreadsheet Student Table */}
                                       {isSecOpen && (
-                                        <div className="overflow-x-auto">
-                                          <table className="w-full text-left text-sm">
-                                            <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase">
+                                        <div className="overflow-x-auto w-full">
+                                          <table className="w-full text-left text-sm min-w-[300px]">
+                                            <thead className="bg-slate-100/50 border-b border-slate-100 text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-wider">
                                               <tr>
-                                                <th className="px-3 py-2.5 w-10 text-center">#</th>
-                                                <th className="px-3 py-2.5">Scholar No</th>
-                                                <th className="px-3 py-2.5">Enrollment No</th>
-                                                <th className="px-3 py-2.5">Student Name</th>
-                                                <th className="px-3 py-2.5">Mobile</th>
-                                                <th className="px-3 py-2.5 text-right w-36">Status</th>
+                                                <th className="px-3 sm:px-4 py-2.5 w-10 sm:w-12 text-center">#</th>
+                                                <th className="px-3 sm:px-4 py-2.5">Student Details</th>
+                                                <th className="px-3 sm:px-4 py-2.5 text-right w-24 sm:w-32">Status</th>
                                               </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-slate-100">
+                                            <tbody className="divide-y divide-slate-100/50">
                                               {secGroup.students.map((st, sIdx) => {
                                                 const isPresent = attendanceMap[st.id] === 'present';
                                                 return (
@@ -865,44 +950,42 @@ export default function AttendancePage() {
                                                       }
                                                     }}
                                                     className={cn(
-                                                      user ? "cursor-pointer hover:bg-slate-50/80" : "cursor-default",
-                                                      "transition-colors select-none",
-                                                      isPresent && "bg-emerald-50/40"
+                                                      user ? "cursor-pointer hover:bg-white" : "cursor-default",
+                                                      "transition-colors select-none group h-12 sm:h-14",
+                                                      isPresent && "bg-emerald-50/30 hover:bg-emerald-50/50"
                                                     )}
                                                   >
-                                                    <td className="px-3 py-2.5 text-center text-slate-400 font-mono text-xs">
+                                                    <td className="px-3 sm:px-4 py-2 text-center text-slate-400 font-mono text-[10px] sm:text-xs font-bold">
                                                       {sIdx + 1}
                                                     </td>
-                                                    <td className="px-3 py-2.5 font-bold text-slate-900 font-mono text-xs">
-                                                      {st.scholar_number || '-'}
+                                                    <td className="px-3 sm:px-4 py-2">
+                                                      <div className="flex flex-col justify-center">
+                                                        <span className="font-bold text-slate-800 text-xs sm:text-sm truncate max-w-[140px] sm:max-w-[250px] capitalize">
+                                                          {st.name}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                                          {st.scholar_number || st.enrollment_number || st.roll_number || '-'}
+                                                        </span>
+                                                      </div>
                                                     </td>
-                                                    <td className="px-3 py-2.5 text-slate-600 font-mono text-xs">
-                                                      {st.enrollment_number || st.roll_number || '-'}
-                                                    </td>
-                                                    <td className="px-3 py-2.5 font-semibold text-slate-900">
-                                                      {st.name}
-                                                    </td>
-                                                    <td className="px-3 py-2.5 text-xs text-slate-500 font-mono">
-                                                      {st.mobile_number || '-'}
-                                                    </td>
-                                                    <td className="px-3 py-2.5 text-right">
+                                                    <td className="px-3 sm:px-4 py-2 text-right">
                                                       <span
                                                         className={cn(
-                                                          "inline-flex items-center justify-center px-3 py-1 rounded-md text-xs font-bold transition-all shadow-2xs",
+                                                          "inline-flex items-center justify-center px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-black tracking-wide transition-all",
                                                           isPresent
-                                                            ? "bg-emerald-600 text-white"
-                                                            : "bg-slate-100 text-slate-500 border border-slate-200"
+                                                            ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/20 group-hover:bg-emerald-600"
+                                                            : "bg-white text-slate-500 border border-slate-200 group-hover:bg-slate-50 group-hover:border-slate-300 group-hover:shadow-sm"
                                                         )}
                                                       >
                                                         {isPresent ? (
                                                           <>
-                                                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                                                            PRESENT
+                                                            <CheckCircle2 className="w-3.5 h-3.5 sm:mr-1" />
+                                                            <span className="hidden sm:inline">PRESENT</span>
                                                           </>
                                                         ) : (
                                                           <>
-                                                            <XCircle className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                                                            ABSENT
+                                                            <XCircle className="w-3.5 h-3.5 sm:mr-1 text-slate-400" />
+                                                            <span className="hidden sm:inline">ABSENT</span>
                                                           </>
                                                         )}
                                                       </span>

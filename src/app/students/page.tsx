@@ -20,7 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { fetchStudents, supabase, Student } from "@/lib/api";
+import { fetchStudents, deleteStudent, deleteAllStudents, Student } from "@/lib/api";
 import { ExcelImportDialog } from "@/components/excel-import-dialog";
 import { AddStudentDialog } from "@/components/add-student-dialog";
 import { toast } from "sonner";
@@ -52,12 +52,27 @@ export default function StudentsPage() {
     if (!confirm("Are you sure you want to delete this student?")) return;
 
     try {
-      const { error } = await supabase.from('students').delete().eq('id', id);
-      if (error) throw error;
+      await deleteStudent(id);
       toast.success("Student deleted");
       mutate();
     } catch {
       toast.error("Failed to delete student");
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!confirm("⚠️ WARNING: Are you absolutely sure you want to delete ALL students and their attendance records? This action cannot be undone.")) return;
+    
+    // Double confirmation for safety
+    if (!confirm("Are you REALLY sure? Type 'yes' to proceed? (Well, just clicking OK is enough but please be sure!)")) return;
+
+    try {
+      await deleteAllStudents();
+      toast.success("All student records deleted successfully");
+      mutate();
+      setPage(1);
+    } catch (err: any) {
+      toast.error("Failed to delete all students: " + err.message);
     }
   };
 
@@ -93,6 +108,10 @@ export default function StudentsPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Button onClick={handleDeleteAll} variant="outline" className="text-red-600 hover:text-white hover:bg-red-600 border-red-200">
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete All
+          </Button>
           <AddStudentDialog onSuccess={() => mutate()} />
           <ExcelImportDialog onSuccess={() => mutate()} />
         </div>
