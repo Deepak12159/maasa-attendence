@@ -54,7 +54,7 @@ import {
   batchMarkAttendance,
   Student,
 } from "@/lib/api";
-import { exportAttendanceToExcel, deriveYearFromEnrollment } from "@/lib/excel";
+import { exportAttendanceToExcel, deriveYearFromEnrollment, exportSingleSectionToExcel } from "@/lib/excel";
 import { ExcelImportDialog } from "@/components/excel-import-dialog";
 import { AddStudentDialog } from "@/components/add-student-dialog";
 import { ExcelAttendanceDialog } from "@/components/excel-attendance-dialog";
@@ -175,6 +175,22 @@ export default function AttendancePage() {
     } catch {
       toast.error("Batch update failed");
       mutateAttendance();
+    }
+  };
+
+  // Export single section
+  const handleExportSection = async (sectionStudents: Student[], sectionName: string) => {
+    if (sectionStudents.length === 0) {
+      toast.error("No students in this section");
+      return;
+    }
+    const toastId = toast.loading(`Generating Excel for ${sectionName}...`);
+    try {
+      const allAttendance = await fetchAllAttendance();
+      exportSingleSectionToExcel(sectionStudents, allAttendance, sectionName);
+      toast.success(`${sectionName} report downloaded!`, { id: toastId });
+    } catch (e) {
+      toast.error(`Failed to export ${sectionName}`, { id: toastId });
     }
   };
 
@@ -860,6 +876,13 @@ export default function AttendancePage() {
                                   const secPercent = secTotal > 0 ? Math.round((secPresent / secTotal) * 100) : 0;
                                   const studentIds = secGroup.students.map((st) => st.id);
 
+                                  const orgYear = settings?.organization_structure?.find(y => y.name === yearGroup.year);
+                                  const orgBranch = orgYear?.branches?.find(b => b.name === progGroup.program);
+                                  const orgSection = orgBranch?.sections?.find(s => s.name === secGroup.section);
+
+                                  const isScheduledToday = orgSection?.attendanceDays ? orgSection.attendanceDays.includes(dayOfWeek) : true;
+                                  const scheduleText = orgSection?.startTime && orgSection?.endTime ? `${orgSection.startTime} - ${orgSection.endTime}` : '';
+
                                   return (
                                     <div
                                       key={secKey}
@@ -870,22 +893,50 @@ export default function AttendancePage() {
                                         onClick={() => toggleSection(secKey)}
                                         className="w-full flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white hover:bg-slate-50 transition-colors border-b border-slate-100 group text-left gap-3"
                                       >
-                                        <div className="flex items-center gap-3">
-                                          <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
+                                        <div className="flex items-center gap-3 flex-wrap">
+                                          <div className={`w-2 h-2 rounded-full ${isScheduledToday ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-slate-300'}`} />
                                           <span className="font-bold text-slate-800 text-sm sm:text-base">
                                             Section {secGroup.section}
                                           </span>
                                           <span className="text-xs bg-slate-50 border border-slate-200 text-slate-600 font-bold px-2 py-0.5 rounded-md shadow-sm">
                                             {secPresent}/{secTotal} <span className="text-slate-300 mx-1">|</span> {secPercent}%
                                           </span>
+                                          {scheduleText && (
+                                            <span className="text-[10px] font-bold tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded uppercase">
+                                              {scheduleText}
+                                            </span>
+                                          )}
+                                          {!isScheduledToday && (
+                                            <span className="text-[10px] font-bold tracking-wider text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded uppercase">
+                                              Off Today
+                                            </span>
+                                          )}
                                         </div>
 
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-3">
+                                          {/* Section Export Button */}
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleExportSection(
+                                                secGroup.students, 
+                                                `${yearGroup.year.replace('Year', '').trim()}_${progGroup.program}_Sec${secGroup.section}`
+                                              );
+                                            }}
+                                            className="h-8 w-8 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                            title="Download Section Report"
+                                          >
+                                            <Download className="w-4 h-4" />
+                                          </Button>
+
                                           {/* 1-Click Fast Batch Buttons for Sir */}
                                           {user && (
                                             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                                               <Button
                                                 size="sm"
+                                                disabled={!isScheduledToday}
                                                 onClick={() =>
                                                   handleBatchMark(
                                                     studentIds,
@@ -893,7 +944,7 @@ export default function AttendancePage() {
                                                     `${progGroup.program} - ${secGroup.section}`
                                                   )
                                                 }
-                                                className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold shadow-sm h-8 px-3 rounded-lg transition-all active:scale-95"
+                                                className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-300 disabled:opacity-50 text-white text-xs font-bold shadow-sm h-8 px-3 rounded-lg transition-all active:scale-95"
                                               >
                                                 <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
                                                 Present All
@@ -902,6 +953,7 @@ export default function AttendancePage() {
                                               <Button
                                                 variant="outline"
                                                 size="sm"
+                                                disabled={!isScheduledToday}
                                                 onClick={() =>
                                                   handleBatchMark(
                                                     studentIds,
@@ -909,7 +961,7 @@ export default function AttendancePage() {
                                                     `${progGroup.program} - ${secGroup.section}`
                                                   )
                                                 }
-                                                className="text-rose-600 hover:text-white hover:bg-rose-500 border-rose-200 text-xs font-bold h-8 px-3 rounded-lg transition-all active:scale-95 bg-rose-50"
+                                                className="text-rose-600 hover:text-white hover:bg-rose-500 disabled:text-slate-400 disabled:border-slate-200 disabled:bg-slate-50 border-rose-200 text-xs font-bold h-8 px-3 rounded-lg transition-all active:scale-95 bg-rose-50"
                                               >
                                                 <XCircle className="w-3.5 h-3.5 mr-1.5" />
                                                 Absent All
@@ -945,50 +997,82 @@ export default function AttendancePage() {
                                                   <tr
                                                     key={st.id}
                                                     onClick={() => {
-                                                      if (user) {
+                                                      if (user && isScheduledToday) {
                                                         handleToggle(st.id, isPresent ? 'present' : null);
                                                       }
                                                     }}
                                                     className={cn(
-                                                      user ? "cursor-pointer hover:bg-white" : "cursor-default",
-                                                      "transition-colors select-none group h-12 sm:h-14",
-                                                      isPresent && "bg-emerald-50/30 hover:bg-emerald-50/50"
+                                                      "group transition-colors",
+                                                      !isScheduledToday 
+                                                        ? "opacity-60 cursor-not-allowed bg-slate-50/30" 
+                                                        : (user ? "cursor-pointer" : ""),
+                                                      isScheduledToday && isPresent ? "bg-emerald-50/50 hover:bg-emerald-50" : "",
+                                                      isScheduledToday && !isPresent ? "hover:bg-slate-50/80" : ""
                                                     )}
                                                   >
-                                                    <td className="px-3 sm:px-4 py-2 text-center text-slate-400 font-mono text-[10px] sm:text-xs font-bold">
+                                                    <td className="px-3 sm:px-4 py-3 sm:py-4 text-center text-slate-400 font-mono text-[10px] sm:text-xs font-medium">
                                                       {sIdx + 1}
                                                     </td>
-                                                    <td className="px-3 sm:px-4 py-2">
-                                                      <div className="flex flex-col justify-center">
-                                                        <span className="font-bold text-slate-800 text-xs sm:text-sm truncate max-w-[140px] sm:max-w-[250px] capitalize">
-                                                          {st.name}
+                                                    <td className="px-3 sm:px-4 py-3 sm:py-4">
+                                                      <div className="font-bold text-slate-900 text-sm sm:text-base mb-0.5">
+                                                        {st.name}
+                                                      </div>
+                                                      <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-slate-500 font-mono">
+                                                        <span className="bg-slate-100 px-1.5 py-0.5 rounded font-semibold text-slate-600 border border-slate-200">
+                                                          {st.scholar_number || '-'}
                                                         </span>
-                                                        <span className="text-[10px] text-slate-400 font-mono mt-0.5">
-                                                          {st.scholar_number || st.enrollment_number || st.roll_number || '-'}
+                                                        <span className="text-slate-400">
+                                                          {st.enrollment_number || st.roll_number || '-'}
                                                         </span>
                                                       </div>
                                                     </td>
-                                                    <td className="px-3 sm:px-4 py-2 text-right">
-                                                      <span
-                                                        className={cn(
-                                                          "inline-flex items-center justify-center px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-black tracking-wide transition-all",
-                                                          isPresent
-                                                            ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/20 group-hover:bg-emerald-600"
-                                                            : "bg-white text-slate-500 border border-slate-200 group-hover:bg-slate-50 group-hover:border-slate-300 group-hover:shadow-sm"
-                                                        )}
-                                                      >
-                                                        {isPresent ? (
-                                                          <>
-                                                            <CheckCircle2 className="w-3.5 h-3.5 sm:mr-1" />
-                                                            <span className="hidden sm:inline">PRESENT</span>
-                                                          </>
-                                                        ) : (
-                                                          <>
-                                                            <XCircle className="w-3.5 h-3.5 sm:mr-1 text-slate-400" />
-                                                            <span className="hidden sm:inline">ABSENT</span>
-                                                          </>
-                                                        )}
-                                                      </span>
+                                                    <td className="px-3 sm:px-4 py-3 sm:py-4 text-right">
+                                                      {user ? (
+                                                        <button
+                                                          disabled={!isScheduledToday}
+                                                          className={cn(
+                                                            "inline-flex items-center justify-center px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black transition-all",
+                                                            !isScheduledToday 
+                                                              ? "bg-slate-100 text-slate-400 border border-slate-200" 
+                                                              : isPresent
+                                                                ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20 group-hover:bg-emerald-600"
+                                                                : "bg-white text-slate-500 border border-slate-200 group-hover:border-indigo-300 group-hover:text-indigo-600 shadow-sm"
+                                                          )}
+                                                        >
+                                                          {isPresent ? (
+                                                            <>
+                                                              <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-1.5" />
+                                                              <span className="hidden sm:inline">PRESENT</span>
+                                                            </>
+                                                          ) : (
+                                                            <>
+                                                              <span className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-1.5 rounded-full border-2 border-current opacity-50" />
+                                                              <span className="hidden sm:inline">MARK</span>
+                                                            </>
+                                                          )}
+                                                        </button>
+                                                      ) : (
+                                                        <span
+                                                          className={cn(
+                                                            "inline-flex items-center justify-center px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-black tracking-wide transition-all",
+                                                            isPresent
+                                                              ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/20"
+                                                              : "bg-white text-slate-500 border border-slate-200"
+                                                          )}
+                                                        >
+                                                          {isPresent ? (
+                                                            <>
+                                                              <CheckCircle2 className="w-3.5 h-3.5 sm:mr-1" />
+                                                              <span className="hidden sm:inline">PRESENT</span>
+                                                            </>
+                                                          ) : (
+                                                            <>
+                                                              <XCircle className="w-3.5 h-3.5 sm:mr-1 text-slate-400" />
+                                                              <span className="hidden sm:inline">ABSENT</span>
+                                                            </>
+                                                          )}
+                                                        </span>
+                                                      )}
                                                     </td>
                                                   </tr>
                                                 );

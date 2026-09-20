@@ -33,6 +33,7 @@ export interface OrgSection {
   name: string;
   startTime?: string;
   endTime?: string;
+  attendanceDays?: number[];
 }
 
 export interface OrgBranch {

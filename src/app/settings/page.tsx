@@ -137,7 +137,20 @@ export default function SettingsPage() {
     const sectionName = prompt("Enter Section Name (e.g., A):");
     if (!sectionName) return;
     const newOrg = [...orgStructure];
-    newOrg[yearIndex].branches[branchIndex].sections.push({ name: sectionName, startTime: "09:00", endTime: "10:00" });
+    newOrg[yearIndex].branches[branchIndex].sections.push({ name: sectionName, startTime: "09:00", endTime: "10:00", attendanceDays: [1, 2, 3, 4, 5, 6] });
+    setOrgStructure(newOrg);
+  };
+
+  const toggleSectionDay = (yearIndex: number, branchIndex: number, sectionIndex: number, dayId: number) => {
+    const newOrg = [...orgStructure];
+    const section = newOrg[yearIndex].branches[branchIndex].sections[sectionIndex];
+    if (!section.attendanceDays) section.attendanceDays = [1, 2, 3, 4, 5, 6];
+    
+    if (section.attendanceDays.includes(dayId)) {
+      section.attendanceDays = section.attendanceDays.filter(d => d !== dayId);
+    } else {
+      section.attendanceDays = [...section.attendanceDays, dayId];
+    }
     setOrgStructure(newOrg);
   };
 
@@ -313,26 +326,55 @@ export default function SettingsPage() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-4">
+                          <div className="grid grid-cols-1 gap-3 pl-4">
                             {branch.sections.map((section, sIdx) => (
-                              <div key={sIdx} className="flex items-center gap-2 bg-slate-50 p-2 rounded border border-slate-100">
-                                <span className="font-medium text-sm min-w-[80px]">{section.name}</span>
-                                <Input 
-                                  type="time" 
-                                  value={section.startTime || ''} 
-                                  onChange={(e) => updateSectionTime(yIdx, bIdx, sIdx, 'startTime', e.target.value)}
-                                  className="h-8 text-xs w-28"
-                                />
-                                <span className="text-xs text-slate-500">to</span>
-                                <Input 
-                                  type="time" 
-                                  value={section.endTime || ''} 
-                                  onChange={(e) => updateSectionTime(yIdx, bIdx, sIdx, 'endTime', e.target.value)}
-                                  className="h-8 text-xs w-28"
-                                />
-                                <Button onClick={() => removeSection(yIdx, bIdx, sIdx)} size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:text-red-600">
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
+                              <div key={sIdx} className="flex flex-col gap-2 bg-slate-50 p-3 rounded-lg border border-slate-100 shadow-sm">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium text-sm min-w-[80px] text-slate-800">{section.name}</span>
+                                  <Input 
+                                    type="time" 
+                                    value={section.startTime || ''} 
+                                    onChange={(e) => updateSectionTime(yIdx, bIdx, sIdx, 'startTime', e.target.value)}
+                                    className="h-8 text-xs w-28 bg-white"
+                                  />
+                                  <span className="text-xs text-slate-500 font-medium">to</span>
+                                  <Input 
+                                    type="time" 
+                                    value={section.endTime || ''} 
+                                    onChange={(e) => updateSectionTime(yIdx, bIdx, sIdx, 'endTime', e.target.value)}
+                                    className="h-8 text-xs w-28 bg-white"
+                                  />
+                                  <Button onClick={() => removeSection(yIdx, bIdx, sIdx)} size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 ml-auto">
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                                <div className="flex items-center gap-1.5 ml-2 mt-1 sm:ml-[88px] sm:mt-0">
+                                  <span className="text-xs font-semibold text-slate-500 mr-1 uppercase tracking-wider">Days:</span>
+                                  {[
+                                    { id: 1, label: 'M' },
+                                    { id: 2, label: 'T' },
+                                    { id: 3, label: 'W' },
+                                    { id: 4, label: 'T' },
+                                    { id: 5, label: 'F' },
+                                    { id: 6, label: 'S' },
+                                  ].map(day => {
+                                    const days = section.attendanceDays || [1,2,3,4,5,6];
+                                    const isActive = days.includes(day.id);
+                                    return (
+                                      <button
+                                        key={day.id}
+                                        onClick={() => toggleSectionDay(yIdx, bIdx, sIdx, day.id)}
+                                        className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold transition-all ${
+                                          isActive 
+                                            ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20 hover:bg-indigo-600' 
+                                            : 'bg-white border border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
+                                        }`}
+                                      >
+                                        {day.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             ))}
                             {branch.sections.length === 0 && (

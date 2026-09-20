@@ -113,14 +113,17 @@ export function exportAttendanceToExcel(
   allAttendance: Attendance[],
   orgStructure: any[]
 ) {
-  // Simple summary
+  // Prepare attendance lookup
   const attendanceRecord: Record<string, Attendance[]> = {};
   for (const a of allAttendance) {
     if (!attendanceRecord[a.student_id]) attendanceRecord[a.student_id] = [];
     attendanceRecord[a.student_id].push(a);
   }
 
-  const rows = students.map((st, index) => {
+  const wb = XLSX.utils.book_new();
+
+  // 1. All Students Summary
+  const allRows = students.map((st, index) => {
     const stAtt = attendanceRecord[st.id] || [];
     const presentCount = stAtt.filter(a => a.status === 'present').length;
     const totalCount = stAtt.length;
@@ -141,11 +144,119 @@ export function exportAttendanceToExcel(
     };
   });
 
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Attendance Summary');
+  const wsAll = XLSX.utils.json_to_sheet(allRows);
+  XLSX.utils.book_append_sheet(wb, wsAll, 'All Students');
+
+  // 2. Section-wise sheets
+  const groups: Record<string, Student[]> = {};
+  for (const st of students) {
+    const y = (st.year || '1st Year').replace('Year', '').trim();
+    const p = st.program || 'Prog';
+    const s = st.section || 'A';
+    
+    // Excel sheet name max length is 31 chars, no special chars
+    let rawName = `${y}_${p}_${s}`;
+    let sheetName = rawName.replace(/[\\/?*[\]]/g, '').substring(0, 31);
+    
+    if (!groups[sheetName]) groups[sheetName] = [];
+    groups[sheetName].push(st);
+  }
+
+  for (const [sheetName, groupStudents] of Object.entries(groups)) {
+    if (sheetName === 'All Students') continue;
+
+    const rows = groupStudents.map((st, index) => {
+      const stAtt = attendanceRecord[st.id] || [];
+      const presentCount = stAtt.filter(a => a.status === 'present').length;
+      const totalCount = stAtt.length;
+      const percentage = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) + '%' : '0%';
+
+      return {
+        'S.No': index + 1,
+        'Scholar No': st.scholar_number || '',
+        'Enrollment No': st.enrollment_number || st.roll_number || '',
+        'Student Name': st.name,
+        'Total Days Present': presentCount,
+        'Total Days Recorded': totalCount,
+        'Attendance %': percentage,
+        'Mobile': st.mobile_number || '',
+      };
+    });
+    
+    const ws = XLSX.utils.json_to_sheet(rows);
+    // Auto-adjust column width
+    ws['!cols'] = [
+      { wch: 6 }, // S.No
+      { wch: 15 }, // Scholar
+      { wch: 18 }, // Enroll
+      { wch: 30 }, // Name
+      { wch: 18 }, // Present
+      { wch: 18 }, // Recorded
+      { wch: 15 }, // %
+      { wch: 15 }, // Mobile
+    ];
+    
+    try {
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    } catch(e) {
+      try {
+        XLSX.utils.book_append_sheet(wb, ws, `${sheetName.substring(0,25)}_${Math.floor(Math.random()*1000)}`);
+      } catch (e2) {}
+    }
+  }
   
-  XLSX.writeFile(wb, `attendence.xlsx`);
+  const dateStr = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `Attendance_Report_${dateStr}.xlsx`);
+}
+
+export function exportSingleSectionToExcel(
+  students: Student[],
+  allAttendance: Attendance[],
+  sectionName: string
+) {
+  const attendanceRecord: Record<string, Attendance[]> = {};
+  for (const a of allAttendance) {
+    if (!attendanceRecord[a.student_id]) attendanceRecord[a.student_id] = [];
+    attendanceRecord[a.student_id].push(a);
+  }
+
+  const rows = students.map((st, index) => {
+    const stAtt = attendanceRecord[st.id] || [];
+    const presentCount = stAtt.filter(a => a.status === 'present').length;
+    const totalCount = stAtt.length;
+    const percentage = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) + '%' : '0%';
+
+    return {
+      'S.No': index + 1,
+      'Scholar No': st.scholar_number || '',
+      'Enrollment No': st.enrollment_number || st.roll_number || '',
+      'Student Name': st.name,
+      'Total Days Present': presentCount,
+      'Total Days Recorded': totalCount,
+      'Attendance %': percentage,
+      'Mobile': st.mobile_number || '',
+    };
+  });
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [
+    { wch: 6 }, // S.No
+    { wch: 15 }, // Scholar
+    { wch: 18 }, // Enroll
+    { wch: 30 }, // Name
+    { wch: 18 }, // Present
+    { wch: 18 }, // Recorded
+    { wch: 15 }, // %
+    { wch: 15 }, // Mobile
+  ];
+
+  const wb = XLSX.utils.book_new();
+  const safeSheetName = sectionName.replace(/[\\/?*[\]]/g, '').substring(0, 31);
+  XLSX.utils.book_append_sheet(wb, ws, safeSheetName || 'Section_Report');
+  
+  const dateStr = new Date().toISOString().split('T')[0];
+  const safeFileName = sectionName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  XLSX.writeFile(wb, `Attendance_${safeFileName}_${dateStr}.xlsx`);
 }
 
 export function downloadAttendanceTemplate(
