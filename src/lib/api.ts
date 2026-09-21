@@ -179,6 +179,14 @@ export async function batchUpsertStudents(studentsList: Partial<Student>[]) {
   return inserted;
 }
 
+export async function updateStudent(id: string, data: Partial<Student>) {
+  const { error } = await supabase
+    .from('students')
+    .update(data)
+    .eq('id', id);
+  if (error) throw error;
+}
+
 export async function deleteStudent(id: string) {
   await supabase.from('attendance').delete().eq('student_id', id);
   const { error } = await supabase.from('students').delete().eq('id', id);

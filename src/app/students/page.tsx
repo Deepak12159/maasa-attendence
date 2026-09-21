@@ -23,6 +23,7 @@ import {
 import { fetchStudents, deleteStudent, deleteAllStudents, Student } from "@/lib/api";
 import { ExcelImportDialog } from "@/components/excel-import-dialog";
 import { AddStudentDialog } from "@/components/add-student-dialog";
+import { EditStudentDialog } from "@/components/edit-student-dialog";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
@@ -197,7 +198,8 @@ export default function StudentsPage() {
                     <TableCell className="text-xs font-semibold text-slate-700">
                       {student.section || 'Section A'}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right flex items-center justify-end gap-1">
+                      <EditStudentDialog student={student} onSuccess={() => mutate()} />
                       <Button
                         variant="ghost"
                         size="icon"
