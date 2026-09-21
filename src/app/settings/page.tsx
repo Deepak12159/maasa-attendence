@@ -44,14 +44,16 @@ export default function SettingsPage() {
   const [workingDays, setWorkingDays] = useState<number[]>([]);
   const [orgStructure, setOrgStructure] = useState<OrgYear[]>([]);
   const [isSavingOrg, setIsSavingOrg] = useState(false);
+  const [hasSyncedSettings, setHasSyncedSettings] = useState(false);
 
   // Sync settings when loaded
-  if (settings && workingDays.length === 0 && !isSavingDays) {
-    setWorkingDays(settings.working_days);
-  }
-  if (settings && orgStructure.length === 0 && !isSavingOrg && settings.organization_structure) {
-    setOrgStructure(settings.organization_structure);
-  }
+  useEffect(() => {
+    if (settings && !hasSyncedSettings) {
+      setWorkingDays(settings.working_days || [1, 2, 3, 4, 5, 6]);
+      setOrgStructure(settings.organization_structure || []);
+      setHasSyncedSettings(true);
+    }
+  }, [settings, hasSyncedSettings]);
 
   const handleAddHoliday = async (e: React.FormEvent) => {
     e.preventDefault();
