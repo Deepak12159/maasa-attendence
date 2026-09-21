@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UserPlus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,14 +25,27 @@ export function AddStudentDialog({ onSuccess, triggerButton }: AddStudentDialogP
   const [name, setName] = useState("");
   const [scholarNumber, setScholarNumber] = useState("");
   const [enrollmentNumber, setEnrollmentNumber] = useState("");
-  const [program, setProgram] = useState("B.Tech Computer Science and Engineering");
-  const [year, setYear] = useState("1st Year");
-  const [section, setSection] = useState("Section A");
+  const [program, setProgram] = useState("");
+  const [year, setYear] = useState("");
+  const [section, setSection] = useState("");
   const [mobile, setMobile] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: settings } = useSWR('settings', fetchSettings);
   const orgStructure = settings?.organization_structure || [];
+
+  // Reset states when dialog opens
+  useEffect(() => {
+    if (open) {
+      setYear("");
+      setProgram("");
+      setSection("");
+      setName("");
+      setScholarNumber("");
+      setEnrollmentNumber("");
+      setMobile("");
+    }
+  }, [open]);
 
   // Update dropdowns dynamically based on selection
   const selectedYearObj = orgStructure.find(y => y.name === year);
@@ -140,7 +153,12 @@ export function AddStudentDialog({ onSuccess, triggerButton }: AddStudentDialogP
                       setProgram(y.branches[0].name);
                       if (y.branches[0].sections.length > 0) {
                         setSection(y.branches[0].sections[0].name);
+                      } else {
+                        setSection("");
                       }
+                    } else {
+                      setProgram("");
+                      setSection("");
                     }
                   }}
                   className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800"
@@ -163,6 +181,39 @@ export function AddStudentDialog({ onSuccess, triggerButton }: AddStudentDialogP
                 </select>
               )}
             </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">Program / Branch</label>
+              {orgStructure.length > 0 ? (
+                <select
+                  value={program}
+                  onChange={(e) => {
+                    setProgram(e.target.value);
+                    const b = availableBranches.find(b => b.name === e.target.value);
+                    if (b && b.sections.length > 0) {
+                      setSection(b.sections[0].name);
+                    } else {
+                      setSection("");
+                    }
+                  }}
+                  className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800"
+                >
+                  <option value="" disabled>Select Program</option>
+                  {availableBranches.map(b => (
+                    <option key={b.name} value={b.name}>{b.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  value={program}
+                  onChange={(e) => setProgram(e.target.value)}
+                  placeholder="B.Tech Computer Science and Engineering"
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-slate-700 block mb-1">Section</label>
               {orgStructure.length > 0 ? (
@@ -184,43 +235,15 @@ export function AddStudentDialog({ onSuccess, triggerButton }: AddStudentDialogP
                 />
               )}
             </div>
-          </div>
 
-          <div>
-            <label className="text-xs font-semibold text-slate-700 block mb-1">Program / Branch</label>
-            {orgStructure.length > 0 ? (
-              <select
-                value={program}
-                onChange={(e) => {
-                  setProgram(e.target.value);
-                  const b = availableBranches.find(b => b.name === e.target.value);
-                  if (b && b.sections.length > 0) {
-                    setSection(b.sections[0].name);
-                  }
-                }}
-                className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800"
-              >
-                <option value="" disabled>Select Program</option>
-                {availableBranches.map(b => (
-                  <option key={b.name} value={b.name}>{b.name}</option>
-                ))}
-              </select>
-            ) : (
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">Mobile Number</label>
               <Input
-                value={program}
-                onChange={(e) => setProgram(e.target.value)}
-                placeholder="B.Tech Computer Science and Engineering"
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
+                placeholder="+91-9876543210"
               />
-            )}
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-slate-700 block mb-1">Mobile Number</label>
-            <Input
-              value={mobile}
-              onChange={(e) => setMobile(e.target.value)}
-              placeholder="+91-9876543210"
-            />
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
