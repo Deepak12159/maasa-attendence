@@ -31,7 +31,7 @@ export function Sidebar() {
       <div className="w-64 bg-white border-r h-full shadow-sm hidden md:flex flex-col">
         <div className="h-16 flex items-center px-6 border-b">
           <CalendarDays className="w-6 h-6 mr-3 text-indigo-600" />
-          <h1 className="text-xl font-bold text-slate-800">MASA</h1>
+          <h1 className="text-xl font-bold text-slate-800">MAASA</h1>
         </div>
         <nav className="flex-1 p-4 space-y-1">
           {navItems.map((item) => {

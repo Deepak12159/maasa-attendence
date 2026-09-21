@@ -358,7 +358,7 @@ export default function AttendancePage() {
                       Sports Club
                     </h1>
                     <span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest border border-indigo-100">
-                      MASA
+                      MAASA
                     </span>
                     {mounted && user && (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
