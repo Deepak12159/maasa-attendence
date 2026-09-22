@@ -13,6 +13,9 @@ import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { useInstallApp } from "@/components/install-provider";
+import { Download } from "lucide-react";
+
 const DAYS = [
   { id: 1, name: "Monday" },
   { id: 2, name: "Tuesday" },
@@ -28,6 +31,7 @@ export default function SettingsPage() {
   const { data: settings, mutate: mutateSettings, isLoading: loadingSettings } = useSWR('settings', fetchSettings);
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const { isReadyForInstall, downloadApp } = useInstallApp();
 
   const [date, setDate] = useState("");
   const [name, setName] = useState("");
@@ -195,9 +199,17 @@ export default function SettingsPage() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Settings</h1>
-        <p className="text-slate-500 mt-1">Configure holidays and working days</p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Settings</h1>
+          <p className="text-slate-500 mt-1">Configure holidays and working days</p>
+        </div>
+        {isReadyForInstall && (
+          <Button onClick={downloadApp} className="bg-indigo-600 hover:bg-indigo-700">
+            <Download className="w-4 h-4 mr-2" />
+            Install App
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="holidays" className="w-full">
