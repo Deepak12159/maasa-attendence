@@ -53,32 +53,81 @@ export interface Settings {
 }
 
 export async function fetchStudents() {
-  const { data, error } = await supabase
-    .from('students')
-    .select('*')
-    .limit(3000)
-    .order('name', { ascending: true });
-  if (error) throw error;
-  return data as Student[];
+  let allStudents: Student[] = [];
+  let from = 0;
+  const step = 1000;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .order('name', { ascending: true })
+      .range(from, from + step - 1);
+
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      allStudents = [...allStudents, ...(data as Student[])];
+      if (data.length < step) {
+        break;
+      }
+    } else {
+      break;
+    }
+    from += step;
+  }
+  
+  return allStudents;
 }
 
 export async function fetchAttendance(dateStr: string) {
-  const { data, error } = await supabase
-    .from('attendance')
-    .select('*')
-    .eq('date', dateStr)
-    .limit(3000);
-  if (error) throw error;
-  return data as Attendance[];
+  let allAttendance: Attendance[] = [];
+  let from = 0;
+  const step = 1000;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('attendance')
+      .select('*')
+      .eq('date', dateStr)
+      .range(from, from + step - 1);
+
+    if (error) throw error;
+    
+    if (data && data.length > 0) {
+      allAttendance = [...allAttendance, ...(data as Attendance[])];
+      if (data.length < step) break;
+    } else {
+      break;
+    }
+    from += step;
+  }
+  return allAttendance;
 }
 
 export async function fetchAllAttendance() {
-  const { data, error } = await supabase
-    .from('attendance')
-    .select('*')
-    .limit(10000);
-  if (error) throw error;
-  return data as Attendance[];
+  let allAttendance: Attendance[] = [];
+  let from = 0;
+  const step = 1000;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('attendance')
+      .select('*')
+      .range(from, from + step - 1);
+
+    if (error) throw error;
+    
+    if (data && data.length > 0) {
+      allAttendance = [...allAttendance, ...(data as Attendance[])];
+      if (data.length < step) break;
+    } else {
+      break;
+    }
+    from += step;
+  }
+
+  return allAttendance;
 }
 
 export async function fetchHolidays() {
@@ -158,11 +207,10 @@ export async function batchUpsertStudents(studentsList: Partial<Student>[]) {
   // Keep the last occurrence of each enrollment_number.
   const seen = new Map<string, Partial<Student>>();
   for (const s of studentsList) {
-    const key = s.enrollment_number?.trim() || '';
+    const key = s.roll_number?.trim() || s.enrollment_number?.trim() || '';
     if (key) {
       seen.set(key, s);
     }
-    // Students with no enrollment_number are skipped (shouldn't happen with Excel import)
   }
   const deduped = Array.from(seen.values());
 
@@ -172,7 +220,7 @@ export async function batchUpsertStudents(studentsList: Partial<Student>[]) {
     const chunk = deduped.slice(i, i + chunkSize);
     const { error } = await supabase
       .from('students')
-      .upsert(chunk, { onConflict: 'enrollment_number' });
+      .upsert(chunk, { onConflict: 'roll_number' });
     if (error) throw error;
     inserted += chunk.length;
   }
